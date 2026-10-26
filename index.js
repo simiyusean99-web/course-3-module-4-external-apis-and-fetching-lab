@@ -1,68 +1,67 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.querySelector('form') || document.querySelector('#weather-form');
-  const input = document.querySelector('input') || document.querySelector('#state-input');
-  const alertsDisplay = document.querySelector('#alerts-display');
-  const errorMessage = document.querySelector('#error-message');
+// index.js
+const weatherApi = "https://api.weather.gov/alerts/active?area="
 
-  if (!form) return;
+// Your code here!
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
 
-    const state = input.value.trim();
-    if (!state) return;
 
-    // Reset error display prior to fetching
-    if (errorMessage) {
-      errorMessage.classList.add('hidden');
-      errorMessage.textContent = '';
-    }
 
-    try {
-      // 1. Fetch weather alerts using the state code input
-      const response = await fetch(`https://api.weather.gov/alerts/active?area=${state}`);
+const stateInput = document.querySelector("#state-input");
+const fetchButton = document.querySelector("#fetch-alerts");
+const alertsDisplay = document.querySelector("#alerts-display");
+const errorMessage = document.querySelector("#error-message");
 
-      if (!response.ok) {
-        throw new Error('Network failure');
-      }
+function showError(message) {
+  errorMessage.textContent = message;
+  errorMessage.classList.remove("hidden");
+}
 
-      const data = await response.json();
+function clearError() {
+  errorMessage.textContent = "";
+  errorMessage.classList.add("hidden");
+}
 
-      // Clear input after fetching
-      input.value = '';
+function displayAlerts(data) {
+  alertsDisplay.innerHTML = "";
 
-      // 2. Render fetched alerts in the DOM
-      displayAlerts(data);
-    } catch (error) {
-      // Display error message when fetch fails
-      if (errorMessage) {
-        errorMessage.classList.remove('hidden');
-        errorMessage.textContent = error.message || 'Network failure';
-      }
-    }
+  const summary = document.createElement("h2");
+  summary.textContent = data.title + ": " + data.features.length;
+  alertsDisplay.appendChild(summary);
+
+  data.features.forEach(function(alert) {
+    const headline = document.createElement("p");
+    headline.textContent = alert.properties.headline || "No headline available";
+    alertsDisplay.appendChild(headline);
   });
 
-  function displayAlerts(data) {
-    if (!alertsDisplay) return;
+  clearError();
+}
 
-    alertsDisplay.innerHTML = '';
+function fetchWeatherAlerts(state) {
+  return fetch(weatherApi + state)
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error("Unable to fetch weather alerts. Please try again.");
+      }
 
-    const features = data.features || [];
-    
-    // Header indicating total count
-    const countHeading = document.createElement('h3');
-    countHeading.textContent = `Weather Alerts: ${features.length}`;
-    alertsDisplay.appendChild(countHeading);
-
-    // Render list of alerts
-    const ul = document.createElement('ul');
-    features.forEach(feature => {
-      const li = document.createElement('li');
-      // Takes event title or headline from NWS API response
-      li.textContent = feature.properties?.event || feature.properties?.headline || '';
-      ul.appendChild(li);
+      return response.json();
+    })
+    .then(function(data) {
+      displayAlerts(data);
+      return data;
+    })
+    .catch(function(error) {
+      showError(error.message);
+      console.log(error.message);
     });
+}
 
-    alertsDisplay.appendChild(ul);
-  }
+fetchButton.addEventListener("click", function() {
+  const state = stateInput.value.trim().toUpperCase();
+
+  alertsDisplay.innerHTML = "";
+  stateInput.value = "";
+
+  clearError();
+  fetchWeatherAlerts(state);
 });
